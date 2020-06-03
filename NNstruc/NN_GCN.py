@@ -1,6 +1,6 @@
 # coding:utf-8
 
-from tensorflow.keras.layers import Dropout, Embedding, Dense, Activation, Lambda
+from tensorflow.keras.layers import Dropout, Embedding, Dense, Activation, Lambda, LSTM
 from tensorflow.keras import Input
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
@@ -43,13 +43,22 @@ def Model_treeGCN_softmax_1(node_count, wordvocabsize, w2v_k, word_W,
                              activation='relu',
                              kernel_regularizer=l2(l2_reg),
                              use_bias=False)([word_embedding_x, fltr_in])
-    dropout_2 = Dropout(0.5)(graph_conv_1)
+    dropout_1 = Dropout(0.5)(graph_conv_1)
     graph_conv_2 = GraphConv(200,
                              activation='relu',
                              kernel_regularizer=l2(l2_reg),
-                             use_bias=False)([dropout_2, fltr_in])
-    feature_node0 = Lambda(lambda x: x[:, 0])(graph_conv_2)
-    class_output = Dense(120)(feature_node0)
+                             use_bias=False)([dropout_1, fltr_in])
+    dropout_2 = Dropout(0.5)(graph_conv_2)
+
+    # feature_node0 = Lambda(lambda x: x[:, 0])(dropout_2)
+
+    LSTM_forward = LSTM(200, activation='tanh', return_sequences=True,
+                        go_backwards=False, dropout=0.5)(dropout_2)
+    LSTM_backward = LSTM(200, activation='tanh', return_sequences=False,
+                         go_backwards=True, dropout=0.5)(LSTM_forward)
+
+
+    class_output = Dense(120)(LSTM_backward)
     class_output = Activation('softmax', name='CLASS')(class_output)
 
     # Build model
