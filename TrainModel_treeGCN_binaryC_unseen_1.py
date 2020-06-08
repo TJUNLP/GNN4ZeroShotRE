@@ -15,37 +15,27 @@ import networkx as nx
 import scipy.sparse as sp
 import tensorflow as tf
 from spektral.layers import GraphConv
-from ProcessData import ProcessData_gcn_onlySeen
+from ProcessData import ProcessData_gcn_UnSeen
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-from NNstruc.NN_GCN import Model_treeGCN_softmax_1
-# from NNstruc.NN_Classifier import Model_BiLSTM_RankMAP_DyMax_TiedExp_tripletloss_1
+from NNstruc.NN_GCN import Model_treeGCN_binaryC_1
+
 
 tf.compat.v1.disable_eager_execution()
 
-def test_model3(nn_model, tag2sentDict_test):
 
-    data_s_all_0 = []
+def test_model3(nn_model, tag2sentDict_test, shuffle=True):
 
-    class_labels = []
+    pairs_test, labels_test = ProcessData_gcn_UnSeen.\
+        Create4Classifier_softmax(tag2sentDict_test, shuffle, fltr, class_num=2)
 
-    totel_right = 0
+    print('test len = ', len(pairs_test[0]), len(labels_test))
 
-    for tag in tag2sentDict_test.keys():
-        sents = tag2sentDict_test[tag]
+    test_x1_sent = np.asarray(pairs_test[0], dtype="int32")
+    test_x1_tag = np.asarray(pairs_test[2], dtype="int32")
+    test_y = np.asarray(labels_test, dtype="int32")
 
-        for s in range(1, len(sents)):
-            totel_right += 1
-
-            [data_s] = sents[s]
-            data_s_all_0.append(data_s)
-            targetvec = np.zeros(120)
-            targetvec[tag] = 1
-            class_labels.append(targetvec)
-
-    pairs = [data_s_all_0]
-    test_x1_sent = np.asarray(pairs[0], dtype="int32")
-    inputs_test_x = [test_x1_sent]
-    inputs_test_y = np.asarray(class_labels, dtype="int32")
+    inputs_test_x = [test_x1_sent, test_x1_tag]
+    inputs_test_y = [test_y]
 
     loss, acc = nn_model.evaluate(inputs_test_x, inputs_test_y, verbose=1, batch_size=1024)
 
@@ -141,11 +131,14 @@ def SelectModel(modelname, node_count, wordvocabsize,
 
     nn_model = None
 
-    if modelname is 'Model_treeGCN_softmax_1':
-        nn_model = Model_treeGCN_softmax_1(node_count=node_count,
+    if modelname is 'Model_treeGCN_binaryC_1':
+        nn_model = Model_treeGCN_binaryC_1(node_count=node_count,
                                            wordvocabsize=wordvocabsize,
+                                           tagvocabsize=tagvocabsize,
                                            w2v_k=w2v_k,
+                                           tag2v_k=tag2v_k,
                                            word_W=word_W,
+                                           tag_W=tag_W,
                                            l2_reg=5e-4)
 
     return nn_model
@@ -153,25 +146,23 @@ def SelectModel(modelname, node_count, wordvocabsize,
 
 def Dynamic_get_trainSet(shuffle=True):
 
-    pairs_train, labels_train = ProcessData_gcn_onlySeen.\
-        Create4Classifier_softmax(tagDict_train, shuffle, fltr, class_num=120)
-    pairs_dev, labels_dev = ProcessData_gcn_onlySeen.\
-        Create4Classifier_softmax(tagDict_dev, shuffle, fltr, class_num=120)
+    pairs_train, labels_train = ProcessData_gcn_UnSeen.\
+        Create4Classifier_softmax(tagDict_train, shuffle, fltr, class_num=2)
+    pairs_dev, labels_dev = ProcessData_gcn_UnSeen.\
+        Create4Classifier_softmax(tagDict_dev, shuffle, fltr, class_num=2)
     print('Dynamic_get_trainSet train len = ', len(pairs_train[0]), len(labels_train))
     print('Dynamic_get_trainSet dev len = ', len(pairs_dev[0]), len(labels_dev))
 
     train_x1_sent = np.asarray(pairs_train[0], dtype="int32")
-    print(train_x1_sent.shape)
+    train_x1_tag = np.asarray(pairs_train[2], dtype="int32")
     train_y = np.asarray(labels_train, dtype="int32")
     dev_x1_sent = np.asarray(pairs_dev[0], dtype="int32")
+    dev_x1_tag = np.asarray(pairs_dev[2], dtype="int32")
     dev_y = np.asarray(labels_dev, dtype="int32")
-    train_fltr = np.asarray(pairs_train[1], dtype='float32')
-    print(train_fltr.shape)
-    dev_fltr = np.asarray(pairs_dev[1], dtype='float32')
 
-    inputs_train_x = [train_x1_sent]
+    inputs_train_x = [train_x1_sent, train_x1_tag]
     inputs_train_y = [train_y]
-    inputs_dev_x = [dev_x1_sent]
+    inputs_dev_x = [dev_x1_sent, dev_x1_tag]
     inputs_dev_y = [dev_y]
 
     return inputs_train_x, inputs_train_y, inputs_dev_x, inputs_dev_y
@@ -181,7 +172,7 @@ if __name__ == "__main__":
 
     maxlen = 100
 
-    modelname = 'Model_treeGCN_softmax_1'
+    modelname = 'Model_treeGCN_binaryC_1'
 
     print(modelname)
 
@@ -195,8 +186,8 @@ if __name__ == "__main__":
 
     resultdir = "./data/result/"
 
-    datafname = 'WikiReading_data_treeGCN.Word.onlySeen'
-
+    datafname = 'WikiReading_data_treeGCN.Word.UnSeen'
+    model_datafname = modelname + '+' + datafname
     datafile = "./model/model_data/" + datafname + ".pkl"
 
     modelfile = "next ...."
@@ -212,7 +203,7 @@ if __name__ == "__main__":
     if not os.path.exists(datafile):
         print("Precess data....")
 
-        ProcessData_gcn_onlySeen.get_data(trainfile, testfile,
+        ProcessData_gcn_UnSeen.get_data(trainfile, testfile,
                                           w2v_file, c2v_file, t2v_file, datafile,
                                           w2v_k=100, c2v_k=50, t2v_k=100, maxlen=maxlen)
 
@@ -241,7 +232,7 @@ if __name__ == "__main__":
                                w2v_k=w2v_k, posi2v_k=max_posi + 1, tag2v_k=type_k, c2v_k=c2v_k,
                                batch_size=batch_size)
 
-        modelfile = "./model/" + modelname + "__" + datafname + "__" + str(inum) + ".h5"
+        modelfile = "./model/" + model_datafname + "__" + str(inum) + ".h5"
 
         if not os.path.exists(modelfile):
             print("Lstm data has extisted: " + datafile)
@@ -260,7 +251,7 @@ if __name__ == "__main__":
             print("test EE model....")
             print(datafile)
             print(modelfile)
-            infer_e2e_model(nn_model, modelname, modelfile, resultdir, w2file=modelfile)
+            infer_e2e_model(nn_model, model_datafname, modelfile, resultdir, w2file=modelfile)
 
 
         del nn_model

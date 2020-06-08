@@ -5,8 +5,13 @@ import numpy as np
 import pickle, codecs
 import json
 import re, random, math
+import networkx as nx
+import tensorflow as tf
 from keras.utils.np_utils import to_categorical
+from spektral.layers.ops import sp_matrix_to_sp_tensor
+from tensorflow.python.ops.sparse_ops import sparse_tensor_to_dense
 from ProcessData import getGraph4Text
+
 
 def load_vec_pkl(fname,vocab,k=300):
     """
@@ -344,15 +349,15 @@ def get_Character_index(files):
     return source_vob, sourc_idex_word, max_c
 
 
-def get_sentDicts(trainfile,
-                  max_context_l, max_e, max_context_m, max_context_r,
-                  max_posi, word_vob, target_vob, char_vob, max_c):
+def get_sentDicts(trainfile, max_s, max_posi, word_vob, target_vob, char_vob, max_c):
     
     tagDict = {}
 
     f = codecs.open(trainfile, 'r', encoding='utf-8')
     lines = f.readlines()
     for si, line in enumerate(lines):
+        if si % 5000 == 0:
+            print(si)
         jline = json.loads(line.rstrip('\r\n').rstrip('\n'))
         sent = jline['sent'].split(' ')
         rel = jline['rel']
@@ -361,8 +366,9 @@ def get_sentDicts(trainfile,
         e2_l = jline['e2_posi'][0]
         e2_r = jline['e2_posi'][1]
 
-        if (e1_r - e1_l) > max_e or (e2_r - e2_l) > max_e:
+        if len(sent) > max_s:
             continue
+
         if e2_l < e1_r:
             tmp = e1_l
             e1_l = e2_l
@@ -370,26 +376,24 @@ def get_sentDicts(trainfile,
             tmp = e1_r
             e1_r = e2_r
             e2_r = tmp
-        if (e2_l - e1_r) > max_context_m:
-            continue
 
         data_tag = target_vob[rel]
 
         data_s = [word_vob['**UNK**']]
         data_s = data_s * 6
-        data_s_cl = loadText(flag='context_l', sent=sent[max(0, e1_l-max_context_l):e1_l],
-                             max_s=max_context_l, word_vob=word_vob)
-        data_s += data_s_cl
-        data_s_e1 = loadText(flag='e1', sent=sent[e1_l: e1_r], max_s=max_e, word_vob=word_vob)
-        data_s += data_s_e1
-        data_s_cm = loadText(flag='context_m', sent=sent[e1_r:e2_l], max_s=max_context_m, word_vob=word_vob)
-        data_s += data_s_cm
-        data_s_e2 = loadText(flag='e2', sent=sent[e2_l: e2_r], max_s=max_e, word_vob=word_vob)
-        data_s += data_s_e2
-        data_s_cr = loadText(flag='context_r', sent=sent[e2_r: min(len(sent), e2_r + max_context_r)],
-                             max_s=max_context_r, word_vob=word_vob)
-        data_s += data_s_cr
-        pairs = [data_s]
+        pad_left = (max_s - len(sent)) // 2
+
+        data_s_cl = loadText(sent=sent, max_s=max_s, word_vob=word_vob)
+        if len(sent) < max_s:
+            data_s_cl = [0] * pad_left + data_s_cl + [0] * (max_s - len(sent) - pad_left)
+        data_s = data_s + data_s_cl
+        assert data_s.__len__() == 106
+
+        graph_dict = getGraph4Text.GetGraph_gat(max_s, pad_left, e1_l, e1_r, e2_l, e2_r)
+        graph = nx.adjacency_matrix(nx.from_dict_of_lists(graph_dict))
+        # graph = sparse_tensor_to_dense(sp_matrix_to_sp_tensor(graph))
+
+        pairs = [data_s, graph]
         if data_tag not in tagDict.keys():
             tagDict[data_tag] = []
 
@@ -400,20 +404,13 @@ def get_sentDicts(trainfile,
     return tagDict
 
 
-def loadText(flag, sent, max_s, word_vob):
+def loadText(sent, max_s, word_vob):
 
     data_s = []
     for ww in sent[0:min(len(sent), max_s)]:
         if ww not in word_vob:
             word_vob[ww] = word_vob['**UNK**']
         data_s.append(word_vob[ww])
-    if len(sent) < max_s:
-        if flag == 'context_l':
-            data_s = [0] * (max_s - len(sent)) + data_s
-        elif flag == 'context_r':
-            data_s = data_s + [0] * (max_s - len(sent))
-        else:
-            data_s = [0] * ((max_s - len(sent))//2) + data_s + [0] * (max_s - len(sent) - (max_s - len(sent))//2)
 
     # list_posi_1 = [i for i in range(1, max_s + 1)]
     # list_posi_2 = [max_s + 1 for i in range(1, max_s + 1)]
@@ -446,7 +443,7 @@ def loadText(flag, sent, max_s, word_vob):
     return data_s
 
 
-def Create4Classifier_softmax(tagDict_train, shuffle=True, fltr=None, class_num=120):
+def Create4Classifier_softmax(tagDict_train, shuffle=True, class_num=120):
 
     labels = []
     data_tag_all = []
@@ -465,9 +462,10 @@ def Create4Classifier_softmax(tagDict_train, shuffle=True, fltr=None, class_num=
             p0 = i
             i += 1
 
-            [data_s] = sents[p0]
+            [data_s, fltr] = sents[p0]
             data_s_all_0.append(data_s)
-            fltr_all.append(fltr.toarray())
+            fltr = fltr.toarray()
+            fltr_all.append(fltr)
             targetvec = np.zeros(class_num)
             data_tag_all.append([tag])
 
@@ -476,7 +474,7 @@ def Create4Classifier_softmax(tagDict_train, shuffle=True, fltr=None, class_num=
                 labels.append(targetvec)
 
                 data_s_all_0.append(data_s)
-                fltr_all.append(fltr.toarray())
+                fltr_all.append(fltr)
                 targetvec = np.zeros(class_num)
                 keylist = list(tagDict_train.keys())
                 ran3 = random.randrange(0, len(keylist))
@@ -691,16 +689,9 @@ def get_data(trainfile, testfile, w2v_file, c2v_file, t2v_file, datafile, w2v_k=
     posi_k, posi_W = load_vec_onehot(k=max_posi + 1)
     print('posi_k, posi_W', posi_k, len(posi_W))
 
-    max_context_l = 35
-    max_e = 6
-    max_context_m = 35
-    max_context_r = 35
-
-    tagDict_1 = get_sentDicts(testfile,
-                              max_context_l, max_e, max_context_m, max_context_r,
+    tagDict_1 = get_sentDicts(testfile, max_s,
                               max_posi, word_vob, target_vob, char_vob, max_c)
-    tagDict_2 = get_sentDicts(trainfile,
-                              max_context_l, max_e, max_context_m, max_context_r,
+    tagDict_2 = get_sentDicts(trainfile, max_s,
                               max_posi, word_vob, target_vob, char_vob, max_c)
     tagDict = {}
     tagDict.update(tagDict_1)
@@ -722,13 +713,9 @@ def get_data(trainfile, testfile, w2v_file, c2v_file, t2v_file, datafile, w2v_k=
           'tagDict_dev len', len(tagDict_dev),
           'tagDict_test len', len(tagDict_test))
 
-    graph_dict = getGraph4Text.GetGraph(max_context_l=max_context_l, max_e_1=max_e,
-                                        max_context_m=max_context_m, max_e_2=max_e,
-                                        max_context_r=max_context_r)
-
     print(datafile, "dataset created!")
     out = open(datafile, 'wb')
-    pickle.dump([graph_dict, tagDict_train, tagDict_dev, tagDict_test,
+    pickle.dump([tagDict_train, tagDict_dev, tagDict_test,
                 word_vob, word_id2word, word_W, w2v_k,
                  char_vob, char_id2char, char_W, c2v_k,
                  target_vob, target_id2word,

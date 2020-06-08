@@ -370,8 +370,6 @@ def get_sentDicts(trainfile,
             tmp = e1_r
             e1_r = e2_r
             e2_r = tmp
-        if (e2_l - e1_r) > max_context_m:
-            continue
 
         data_tag = target_vob[rel]
 
@@ -696,27 +694,23 @@ def get_data(trainfile, testfile, w2v_file, c2v_file, t2v_file, datafile, w2v_k=
     max_context_m = 35
     max_context_r = 35
 
-    tagDict_1 = get_sentDicts(testfile,
+    tagDict_test = get_sentDicts(testfile,
                               max_context_l, max_e, max_context_m, max_context_r,
                               max_posi, word_vob, target_vob, char_vob, max_c)
-    tagDict_2 = get_sentDicts(trainfile,
+    tagDict_traindev = get_sentDicts(trainfile,
                               max_context_l, max_e, max_context_m, max_context_r,
                               max_posi, word_vob, target_vob, char_vob, max_c)
-    tagDict = {}
-    tagDict.update(tagDict_1)
-    tagDict.update(tagDict_2)
-    assert len(tagDict.keys()) == len(tagDict_1.keys()) + len(tagDict_2.keys())
-    print('tagDict_train len', len(tagDict))
+
+    assert list(tagDict_test.keys())[1] not in tagDict_traindev.keys()
+    assert list(tagDict_traindev.keys())[1] not in tagDict_test.keys()
 
     tagDict_train = {}
     tagDict_dev = {}
-    tagDict_test = {}
 
-    for key in tagDict.keys():
-        sp = len(tagDict[key]) // 10 * 9
-        tagDict_train[key] = tagDict[key][:(sp // 10 * 8)]
-        tagDict_dev[key] = tagDict[key][(sp // 10 * 8):sp]
-        tagDict_test[key] = tagDict[key][sp:]
+    for key in tagDict_traindev.keys():
+        sp = len(tagDict_traindev[key]) // 10 * 8
+        tagDict_train[key] = tagDict_traindev[key][:sp]
+        tagDict_dev[key] = tagDict_traindev[key][sp:]
 
     print('tagDict_train len', len(tagDict_train),
           'tagDict_dev len', len(tagDict_dev),

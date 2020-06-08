@@ -442,12 +442,7 @@ if __name__ == "__main__":
 
     maxlen = 100
 
-    modelname = 'Model_ONBiLSTM_RankMAP_three_triloss_020101_426'
-    modelname = 'Model_ONBiLSTM_RankMAP_three_triloss_010201_426'
-    modelname = 'Model_ONBiLSTM_RankMAP_three_triloss_0101501_426'
     modelname = 'Model_ONBiLSTM_RankMAP_three_triloss_0080101_426'
-
-    modelname = 'Model_BiLSTM_RankMAP_three_triloss_0080101_426'
 
     print(modelname)
 
@@ -456,17 +451,8 @@ if __name__ == "__main__":
     c2v_file = "./data/w2v/C0NLL2003.NER.c2v.txt"
     t2v_file = './data/WikiReading/WikiReading.rel2v.by_glove.100d.txt'
 
-    # trainfile = './data/annotated_fb__zeroshot_RE.random.train.txt'
-    # testfile = './data/annotated_fb__zeroshot_RE.random.test.txt'
-
-    # trainfile = './data/FewRel/FewRel_data.train.txt'
-    # testfile = './data/FewRel/FewRel_data.test.txt'
-
     trainfile = './data/WikiReading/WikiReading_data.random.train.txt'
     testfile = './data/WikiReading/WikiReading_data.random.test.txt'
-
-    # trainfile = './data/WikiReading/WikiReading_data.2.random.train.txt'
-    # testfile = './data/WikiReading/WikiReading_data.3.random.test.txt'
 
     resultdir = "./data/result/"
 
@@ -474,6 +460,8 @@ if __name__ == "__main__":
     # datafname = 'WikiReading_data_Siamese.WordChar.Sentpair.relPublish'
     datafname = 'WikiReading_data_Siamese.WordChar.Sentpair.relPunish.devsplit'
     # datafname = 'WikiReading_data_Siamese.Sentpair.1-pseudo-descrip'
+    datafname = 'WikiReading_data_treeGAT.Word.UnSeen'
+    model_datafname = modelname + '+' + datafname
 
     datafile = "./model/model_data/" + datafname + ".pkl"
 
@@ -542,11 +530,6 @@ if __name__ == "__main__":
         del nn_model
         gc.collect()
 
-
-# import tensorflow as tf
-# import keras.backend.tensorflow_backend as KTF
-#
-# KTF.set_session(tf.Session(config=tf.ConfigProto(device_count={'gpu': 0})))
 
 # CUDA_VISIBLE_DEVICES=1 python3 TrainModel.py
 
