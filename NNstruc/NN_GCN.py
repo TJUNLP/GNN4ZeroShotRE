@@ -163,13 +163,14 @@ def Model_treeGAT_softmax_1(node_count, wordvocabsize, w2v_k, word_W,
                                   kernel_regularizer=l2(l2_reg),
                                   dropout_rate=0.5,
                                   use_bias=True)([word_embedding_x, fltr_in])
+    graph_conv_1 = Dropout(0.5)(graph_conv_1)
     graph_conv_2 = GraphAttention(200,
                                   attn_heads=3,
                                   activation='relu',
                                   kernel_regularizer=l2(l2_reg),
                                   dropout_rate=0.5,
                                   use_bias=True)([graph_conv_1, fltr_in])
-
+    graph_conv_2 = Dropout(0.5)(graph_conv_2)
     feature_node0 = Lambda(lambda x: x[:, 0])(graph_conv_2)
 
     pool = GlobalAttentionPool(200)(graph_conv_2)

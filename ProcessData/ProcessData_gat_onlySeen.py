@@ -488,7 +488,6 @@ def Create4Classifier_softmax(tagDict_train, shuffle=True, class_num=120):
                 targetvec[tag] = 1
                 labels.append(targetvec)
 
-
     if shuffle:
         sh = list(zip(data_s_all_0, fltr_all, data_tag_all, labels))
         random.shuffle(sh)
