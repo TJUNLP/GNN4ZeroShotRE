@@ -541,19 +541,49 @@ def get_sentDicts_neg(trainfile, max_s, max_posi, word_vob, char_vob, max_c):
     return tagDict
 
 
-def get_sentDicts(trainfile, max_s, max_posi, word_vob, target_vob, char_vob, max_c,
+def loadText(flag, sent, max_s, max_c, word_vob, char_vob):
+
+    data_s = []
+    for ww in sent[0:min(len(sent), max_s)]:
+        if ww not in word_vob:
+            word_vob[ww] = word_vob['**UNK**']
+        data_s.append(word_vob[ww])
+
+    char_s = []
+    for wi in range(0, min(len(sent), max_s)):
+        word = sent[wi]
+        data_c = []
+        for chr in range(0, min(word.__len__(), max_c)):
+            if not char_vob.__contains__(word[chr]):
+                data_c.append(char_vob["**UNK**"])
+            else:
+                data_c.append(char_vob[word[chr]])
+        data_c = data_c + [0] * max(max_c - word.__len__(), 0)
+        char_s.append(data_c)
+
+    if len(sent) < max_s:
+        if flag == 'context_l':
+            data_s = [0] * (max_s - len(sent)) + data_s
+            char_s = [[0] * max_c] * (max_s - len(sent)) + char_s
+        elif flag == 'context_r':
+            data_s = data_s + [0] * (max_s - len(sent))
+            char_s = char_s + [[0] * max_c] * (max_s - len(sent))
+        else:
+            data_s = [0] * ((max_s - len(sent))//2) + data_s + [0] * (max_s - len(sent) - (max_s - len(sent))//2)
+            char_s = [[0] * max_c] * ((max_s - len(sent))//2) + char_s + [[0] * max_c] * (max_s - len(sent) - (max_s - len(sent))//2)
+
+    return data_s, char_s
+
+
+def get_sentDicts(trainfile,
+                  max_context_l, max_e, max_context_m, max_context_r,
+                  max_posi, word_vob, target_vob, char_vob, max_c,
                   needDEV=False, target_vob_4dev=None):
     tagDict = {}
     tagDict_dev = {}
 
     f = codecs.open(trainfile, 'r', encoding='utf-8')
     lines = f.readlines()
-
-    thd = -1
-    # if needDEV == True:
-    #     # thd = len(lines) * 0.15
-    #     thd = len(lines) * 0.08
-
     for si, line in enumerate(lines):
         jline = json.loads(line.rstrip('\r\n').rstrip('\n'))
         sent = jline['sent'].split(' ')
@@ -563,78 +593,60 @@ def get_sentDicts(trainfile, max_s, max_posi, word_vob, target_vob, char_vob, ma
         e2_l = jline['e2_posi'][0]
         e2_r = jline['e2_posi'][1]
 
-        max_long = max(e1_r, e2_r)
-        if len(sent) > max_s and max_long > max_s:
+        if (e1_r - e1_l) > max_e or (e2_r - e2_l) > max_e:
+            continue
+        if e2_l < e1_r:
+            tmp = e1_l
+            e1_l = e2_l
+            e2_l = tmp
+            tmp = e1_r
+            e1_r = e2_r
+            e2_r = tmp
+        if (e2_l - e1_r) > max_context_m:
             continue
 
         data_tag = target_vob[rel]
 
-        # word_vob['____'] = len(word_vob)+1
+        data_s = [word_vob['**UNK**']]
+        data_s = data_s * 6
+        data_s_cl, char_s_cl = loadText(flag='context_l', sent=sent[max(0, e1_l - max_context_l):e1_l],
+                                        max_s=max_context_l, word_vob=word_vob,
+                                        max_c=max_c, char_vob=char_vob)
+        data_s_e1, char_s_e1 = loadText(flag='e1', sent=sent[e1_l: e1_r],
+                                        max_s=max_e, word_vob=word_vob,
+                                        max_c=max_c, char_vob=char_vob)
+        data_s_cm, char_s_cm = loadText(flag='context_m', sent=sent[e1_r:e2_l],
+                                        max_s=max_context_m, word_vob=word_vob,
+                                        max_c=max_c, char_vob=char_vob)
+        data_s_e2, char_s_e2 = loadText(flag='e2', sent=sent[e2_l: e2_r],
+                                        max_s=max_e, word_vob=word_vob,
+                                        max_c=max_c, char_vob=char_vob)
+        data_s_cr, char_s_cr = loadText(flag='context_r', sent=sent[e2_r: min(len(sent), e2_r + max_context_r)],
+                                        max_s=max_context_r, word_vob=word_vob,
+                                        max_c=max_c, char_vob=char_vob)
+        data_s = data_s + data_s_cl + data_s_e1 + data_s_cm + data_s_e2 + data_s_cr
+        char_s = char_s_cl + char_s_e1 + char_s_cm + char_s_e2 + char_s_cr
 
-        data_s = []
-        for ww in sent[0:min(len(sent), max_s)]:
-            if ww not in word_vob:
-                word_vob[ww] = word_vob['**UNK**']
-            data_s.append(word_vob[ww])
-        data_s = data_s + [0] * max(0, max_s - len(sent))
-
-        list_left = [min(i, max_posi) for i in range(1, e1_l + 1)]
+        list_left = [min(i, max_posi) for i in range(1, max_context_l + 1)]
         list_left.reverse()
-        feature_posi = list_left + [0 for i in range(e1_l, e1_r)] + \
-                       [min(i, max_posi) for i in range(1, len(sent) - e1_r + 1)]
-        data_e1_posi = feature_posi[0:min(len(sent), max_s)] + [max_posi] * max(0, max_s - len(sent))
+        data_e1_posi = list_left + [0 for i in range(0, max_e)] + \
+                       [min(i, max_posi) for i in range(1, max_context_m+max_e+max_context_r + 1)]
 
-        list_left = [min(i, max_posi) for i in range(1, e2_l + 1)]
+        list_left = [min(i, max_posi) for i in range(1, max_context_l+max_e+max_context_m + 1)]
         list_left.reverse()
-        feature_posi = list_left + [0 for i in range(e2_l, e2_r)] + \
-                       [min(i, max_posi) for i in range(1, len(sent) - e2_r + 1)]
-        data_e2_posi = feature_posi[0:min(len(sent), max_s)] + [max_posi] * max(0, max_s - len(sent))
-
-        char_s = []
-        for wi in range(0, min(len(sent), max_s)):
-            word = sent[wi]
-            data_c = []
-            for chr in range(0, min(word.__len__(), max_c)):
-                if not char_vob.__contains__(word[chr]):
-                    data_c.append(char_vob["**UNK**"])
-                else:
-                    data_c.append(char_vob[word[chr]])
-            data_c = data_c + [0] * max(max_c - word.__len__(), 0)
-            char_s.append(data_c)
-        char_s = char_s + [[0] * max_c] * max(0, max_s - len(char_s))
+        data_e2_posi = list_left + [0 for i in range(0, max_e)] + \
+                       [min(i, max_posi) for i in range(1, max_context_r + 1)]
 
         pairs = [data_s, data_e1_posi, data_e2_posi, char_s]
 
-        # if needDEV == True and si < thd:
-        # if needDEV == True and rel in target_vob_4dev.keys():
-        if (needDEV == True) and (si < thd or rel in target_vob_4dev.keys()):
-
+        if needDEV is True and rel in target_vob_4dev.keys():
             if data_tag not in tagDict_dev.keys():
                 tagDict_dev[data_tag] = []
-
-                # if prototypes != None and data_tag in prototypes.keys():
-                #     tagDict_dev[data_tag].append(prototypes[data_tag][0])
-
             tagDict_dev[data_tag].append(pairs)
 
-
-        # elif istest == True:
-        #
-        #     if data_tag not in tagDict.keys():
-        #         if prototypes != None:
-        #             tagDict[data_tag] = prototypes[data_tag]
-        #         else:
-        #             tagDict[data_tag] = []
-        #     if len(tagDict[data_tag]) < 400:
-        #         tagDict[data_tag].append(pairs)
-
         else:
-
             if data_tag not in tagDict.keys():
                 tagDict[data_tag] = []
-                # if prototypes != None and data_tag in prototypes.keys():
-                #     tagDict[data_tag].append(prototypes[data_tag][0])
-
             tagDict[data_tag].append(pairs)
 
     f.close()
@@ -2609,16 +2621,15 @@ def get_rel_prototypes(file, max_s, max_posi, word_vob, target_vob, char_vob, ma
     return tagDict_prototypes
 
 
-def get_data(trainfile, testfile, prototypesfile, w2v_file, c2v_file, t2v_file, datafile, w2v_k=300, c2v_k=25,
-             t2v_k=100, maxlen=50,
-             hasNeg=False, percent=1):
+def get_data(trainfile, testfile, w2v_file, t2v_file, datafile, w2v_k=300, c2v_k=25,
+             t2v_k=100, maxlen=100):
     """
     数据处理的入口函数
     Converts the input files  into the model input formats
     """
 
     word_vob, word_id2word, target_vob, target_id2word, max_s, target_vob_train = get_word_index(
-        [trainfile, testfile, prototypesfile])
+        [trainfile, testfile])
     print("source vocab size: ", str(len(word_vob)))
     print("word_id2word size: ", str(len(word_id2word)))
     print("target vocab size: " + str(len(target_vob)))
@@ -2627,7 +2638,7 @@ def get_data(trainfile, testfile, prototypesfile, w2v_file, c2v_file, t2v_file, 
         max_s = maxlen
     print('max soure sent lenth is ' + str(max_s))
 
-    char_vob, char_id2char, max_c = get_Character_index({trainfile, testfile, prototypesfile})
+    char_vob, char_id2char, max_c = get_Character_index({trainfile, testfile})
     print("source char size: ", char_vob.__len__())
     max_c = min(max_c, 18)
     print("max_c: ", max_c)
@@ -2647,33 +2658,27 @@ def get_data(trainfile, testfile, prototypesfile, w2v_file, c2v_file, t2v_file, 
     posi_k, posi_W = load_vec_onehot(k=max_posi + 1)
     print('posi_k, posi_W', posi_k, len(posi_W))
 
-    # weigtnum = int(len(fragment_train) * percent)
-    # fragment_train = fragment_train[:weigtnum]
+    max_context_l = 35
+    max_e = 6
+    max_context_m = 35
+    max_context_r = 35
 
-    tagDict_prototypes, _ = get_sentDicts(prototypesfile, max_s, max_posi, word_vob, target_vob, char_vob, max_c)
-    print('tagDict_prototypes len', len(tagDict_prototypes))
-
-    tagDict_test, tagDict_dev = get_sentDicts(testfile, max_s, max_posi, word_vob, target_vob, char_vob, max_c,
-                                              istest=False, prototypes=tagDict_prototypes)
-    assert tagDict_dev == {}
+    tagDict_test, _ = get_sentDicts(testfile,
+                                    max_context_l, max_e, max_context_m, max_context_r,
+                                    max_posi, word_vob, target_vob, char_vob, max_c)
     print('tagDict_test len', len(tagDict_test))
 
     target_vob_4dev = get_split_train_dev(target_vob_train)
     print('target_vob len', len(target_vob), 'target_vob_4dev len', len(target_vob_4dev))
 
-    tagDict_train, tagDict_dev = get_sentDicts(trainfile, max_s, max_posi, word_vob, target_vob, char_vob, max_c,
-                                               needDEV=True, target_vob_4dev=target_vob_4dev,
-                                               prototypes=tagDict_prototypes)
+    tagDict_train, tagDict_dev = get_sentDicts(trainfile,
+                                               max_context_l, max_e, max_context_m, max_context_r,
+                                               max_posi, word_vob, target_vob, char_vob, max_c,
+                                               needDEV=True, target_vob_4dev=target_vob_4dev)
     print('tagDict_train len', len(tagDict_train), 'tagDict_dev len', len(tagDict_dev))
 
-    # pairs_train, labels_train = CreatePairs(tagDict_train, istest=False)
-    # print('CreatePairs train len = ', len(pairs_train[0]), len(labels_train))
-    #
-    # pairs_test, labels_test = CreatePairs(tagDict_test, istest=True)
-    # print('CreatePairs test len = ', len(pairs_test[0]), len(labels_test))
-
     print(datafile, "dataset created!")
-    out = open(datafile, 'wb')  #
+    out = open(datafile, 'wb')
     pickle.dump([tagDict_train, tagDict_dev, tagDict_test,
                  word_vob, word_id2word, word_W, w2v_k,
                  char_vob, char_id2char, char_W, c2v_k,
@@ -2685,30 +2690,3 @@ def get_data(trainfile, testfile, prototypesfile, w2v_file, c2v_file, t2v_file, 
 
 if __name__ == "__main__":
     print(20 * 2)
-    p = 65.95
-    r = 56.19
-    print(2 * p * r / (p + r))
-    alpha = 10
-    maxlen = 50
-    w2v_file = "./data/w2v/glove.6B.100d.txt"
-    rel_prototypes_file = './data/WikiReading/rel_class_prototypes.txt.json.txt'
-    t2v_file = './data/WikiReading/WikiReading.rel2v.by_glove.100d.txt'
-    trainfile = './data/WikiReading/WikiReading_data.random.train.txt'
-    testfile = './data/WikiReading/WikiReading_data.random.test.txt'
-
-    word_vob, word_id2word, target_vob, target_id2word, max_s, target_vob_train = get_word_index([trainfile, testfile])
-    print("source vocab size: ", str(len(word_vob)))
-    print("word_id2word size: ", str(len(word_id2word)))
-    print("target vocab size: " + str(len(target_vob)))
-    print("target_id2word size: " + str(len(target_id2word)))
-    if max_s > maxlen:
-        max_s = maxlen
-    print('max soure sent lenth is ' + str(max_s))
-
-    type_k, type_W = load_vec_KGrepresentation(t2v_file, target_vob, k=100)
-    print('TYPE_k, TYPE_W', type_k, len(type_W[0]))
-
-    # CombineLabel_by_relembed_sim_rank(type_W, target_vob, target_vob_train)
-    # get_rel_sim_rank(type_W)
-
-    get_rel_sim_rank_onlytest(type_W, target_vob, target_vob_train)

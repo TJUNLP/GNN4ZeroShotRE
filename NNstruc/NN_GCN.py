@@ -17,12 +17,12 @@ from ProcessData import getGraph4Text
 from tensorflow.python.ops.sparse_ops import sparse_tensor_to_dense
 tf.compat.v1.disable_eager_execution()
 
-# graph_dict = getGraph4Text.GetGraph(max_context_l=35, max_e_1=6,
-#                                     max_context_m=35, max_e_2=6,
-#                                     max_context_r=35)
-graph_dict = getGraph4Text.GetGraph_withOneTag(max_context_l=35, max_e_1=6,
+graph_dict = getGraph4Text.GetGraph(max_context_l=35, max_e_1=6,
                                     max_context_m=35, max_e_2=6,
                                     max_context_r=35)
+# graph_dict = getGraph4Text.GetGraph_withOneTag(max_context_l=35, max_e_1=6,
+#                                     max_context_m=35, max_e_2=6,
+#                                     max_context_r=35)
 
 fltr = nx.adjacency_matrix(nx.from_dict_of_lists(graph_dict))
 fltr = GraphConv.preprocess(fltr)

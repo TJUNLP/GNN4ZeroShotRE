@@ -329,23 +329,9 @@ def infer_e2e_model(nnmodel, modelname, modelfile, resultdir, w2file=''):
     nnmodel.load_weights(modelfile)
     resultfile = resultdir + "result-" + modelname + '-' + str(datetime.datetime.now())+'.txt'
 
-    # print('the test 2 result-----------------------')
-    # P, R, F = test_model2(nn_model, tagDict_test)
-    # print('P = ', P, 'R = ', R, 'F = ', F)
     print('the test 3 result-----------------------')
     P, R, F = test_model3(nn_model, tagDict_test)
     print('P = ', P, 'R = ', R, 'F = ', F)
-    # print('the train sent representation-----------------------')
-    # P, R, F = test_model(nn_model, tagDict_train, needembed=True, w2file=w2file+'.train.txt')
-    # print('P = ', P, 'R = ', R, 'F = ', F)
-    #
-    # print('the test sent representation-----------------------')
-    # P, R, F = test_model(nn_model, tagDict_test, needembed=True, w2file=w2file+'.test.txt')
-    # print('P = ', P, 'R = ', R, 'F = ', F)
-
-    # print('the test_model_4trainset result-----------------------')
-    # P, R, F = test_model_4trainset(nnmodel, pairs_train, labels_train, classifer_labels_train, target_vob)
-    # print('P = ', P, 'R = ', R, 'F = ', F)
 
 
 def SelectModel(modelname, wordvocabsize, tagvocabsize, posivocabsize,charvocabsize,
@@ -355,23 +341,17 @@ def SelectModel(modelname, wordvocabsize, tagvocabsize, posivocabsize,charvocabs
                      batch_size=32):
     nn_model = None
 
-    # if modelname is 'Model_ONBiLSTM_RankMAP_tripletloss_01_1':
-    #     margin = 0.1
-    #     at_margin = 0.1
-    #     nn_model = Model_ONBiLSTM_RankMAP_tripletloss_1(wordvocabsize=wordvocabsize,
-    #                                               posivocabsize=posivocabsize,
-    #                                               charvocabsize=charvocabsize,
-    #                                                 tagvocabsize=tagvocabsize,
-    #                                               word_W=word_W, posi_W=posi_W, char_W=char_W, tag_W=tag_W,
-    #                                               input_sent_lenth=input_sent_lenth,
-    #                                               input_maxword_length=max_c,
-    #                                               w2v_k=w2v_k, posi2v_k=posi2v_k, c2v_k=c2v_k, tag2v_k=tag2v_k,
-    #                                               batch_size=batch_size, margin=margin, at_margin=at_margin)
-
     if modelname is 'Model_ONBiLSTM_RankMAP_three_triloss_0080101_426':
         margin1 = 0.08
         margin2 = 0.1
         margin3 = 0.1
+        nn_model = Model_LSTM_treeGCN_softmax_1(node_count,
+                                                wordvocabsize=wordvocabsize,
+                                                charvocabsize=charvocabsize,
+                                                posivocabsize=posivocabsize,
+                                     w2v_k, c2v_k, posi2v_k,
+                                     word_W, char_W, posi_W, maxword_length,
+                                     l2_reg=5e-4, batch_size=32)
 
         nn_model = Model_ONBiLSTM_RankMAP_three_triloss_1(wordvocabsize=wordvocabsize,
                                                   posivocabsize=posivocabsize,
@@ -384,30 +364,12 @@ def SelectModel(modelname, wordvocabsize, tagvocabsize, posivocabsize,charvocabs
                                                   batch_size=batch_size,
                                                   margin1=margin1, margin2=margin2, margin3=margin3)
 
-
-    if modelname is 'Model_BiLSTM_RankMAP_three_triloss_0080101_426':
-        margin1 = 0.08
-        margin2 = 0.1
-        margin3 = 0.1
-
-        nn_model = Model_BiLSTM_RankMAP_three_triloss_1(wordvocabsize=wordvocabsize,
-                                                  posivocabsize=posivocabsize,
-                                                  charvocabsize=charvocabsize,
-                                                    tagvocabsize=tagvocabsize,
-                                                  word_W=word_W, posi_W=posi_W, char_W=char_W, tag_W=tag_W,
-                                                  input_sent_lenth=input_sent_lenth,
-                                                  input_maxword_length=max_c,
-                                                  w2v_k=w2v_k, posi2v_k=posi2v_k, c2v_k=c2v_k, tag2v_k=tag2v_k,
-                                                  batch_size=batch_size,
-                                                  margin1=margin1, margin2=margin2, margin3=margin3)
-
-
     return nn_model
 
 
-def Dynamic_get_trainSet(istest):
+def Dynamic_get_trainSet(isdev):
 
-    if istest == True:
+    if isdev == True:
         tagDict = tagDict_dev
     else:
         tagDict = tagDict_train
@@ -446,9 +408,7 @@ if __name__ == "__main__":
 
     print(modelname)
 
-    rel_prototypes_file = './data/WikiReading/rel_class_prototypes.txt.json.txt'
     w2v_file = "./data/w2v/glove.6B.100d.txt"
-    c2v_file = "./data/w2v/C0NLL2003.NER.c2v.txt"
     t2v_file = './data/WikiReading/WikiReading.rel2v.by_glove.100d.txt'
 
     trainfile = './data/WikiReading/WikiReading_data.random.train.txt'
@@ -456,33 +416,20 @@ if __name__ == "__main__":
 
     resultdir = "./data/result/"
 
-    # datafname = 'FewRel_data_Siamese.WordChar.Sentpair'
-    # datafname = 'WikiReading_data_Siamese.WordChar.Sentpair.relPublish'
-    datafname = 'WikiReading_data_Siamese.WordChar.Sentpair.relPunish.devsplit'
-    # datafname = 'WikiReading_data_Siamese.Sentpair.1-pseudo-descrip'
-    datafname = 'WikiReading_data_treeGAT.Word.UnSeen'
+    datafname = 'WikiReading_data_treeGCN.WordCharPosi.UnSeen.devsplit'
     model_datafname = modelname + '+' + datafname
-
     datafile = "./model/model_data/" + datafname + ".pkl"
-
-    modelfile = "next ...."
-
-    hasNeg = False
 
     batch_size = 512 # 512
 
-    retrain = False
     Test = True
-    GetVec = False
 
     if not os.path.exists(datafile):
         print("Precess data....")
 
-        ProcessData_gcn.get_data(trainfile, testfile, rel_prototypes_file,
-                                 w2v_file, c2v_file, t2v_file, datafile,
-                                 w2v_k=100, c2v_k=50, t2v_k=100, maxlen=maxlen, hasNeg=hasNeg, percent=0.05)
-
-
+        ProcessData_gcn.get_data(trainfile, testfile,
+                                 w2v_file, t2v_file, datafile,
+                                 w2v_k=100, c2v_k=50, t2v_k=100, maxlen=maxlen)
 
     for inum in range(0, 3):
 
@@ -513,12 +460,6 @@ if __name__ == "__main__":
             print(modelfile)
             train_e2e_model(nn_model, modelfile, inputs_train_x=[], inputs_train_y=[],
                             resultdir=resultdir, npoches=100, batch_size=batch_size, retrain=False, inum=inum)
-
-        else:
-            if retrain:
-                print("ReTraining EE model....")
-                train_e2e_model(nn_model, modelfile, inputs_train_x=[], inputs_train_y=[],
-                                resultdir=resultdir, npoches=100, batch_size=batch_size, retrain=False, inum=inum)
 
         if Test:
             print("test EE model....")

@@ -18,34 +18,25 @@ from spektral.layers import GraphConv
 from ProcessData import ProcessData_gcn_onlySeen
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from NNstruc.NN_GCN import Model_treeGCN_softmax_1
+from NNstruc.NN_GCN_triplet import Model_LSTM_treeGCN_softmax_1
 # from NNstruc.NN_Classifier import Model_BiLSTM_RankMAP_DyMax_TiedExp_tripletloss_1
 
 tf.compat.v1.disable_eager_execution()
 
 def test_model3(nn_model, tag2sentDict_test):
 
-    data_s_all_0 = []
+    pairs_, labels_ = ProcessData_gcn_onlySeen.\
+        Create4Classifier_softmax(tag2sentDict_test, shuffle=True, class_num=120)
 
-    class_labels = []
+    _x1_sent = np.asarray(pairs_[0], dtype="int32")
+    _x1_e1_posi = np.asarray(pairs_[1], dtype="int32")
+    _x1_e2_posi = np.asarray(pairs_[2], dtype="int32")
+    _x1_sent_cahr = np.asarray(pairs_[3], dtype="int32")
+    print(_x1_sent.shape)
+    train_y = np.asarray(labels_, dtype="int32")
 
-    totel_right = 0
-
-    for tag in tag2sentDict_test.keys():
-        sents = tag2sentDict_test[tag]
-
-        for s in range(1, len(sents)):
-            totel_right += 1
-
-            [data_s] = sents[s]
-            data_s_all_0.append(data_s)
-            targetvec = np.zeros(120)
-            targetvec[tag] = 1
-            class_labels.append(targetvec)
-
-    pairs = [data_s_all_0]
-    test_x1_sent = np.asarray(pairs[0], dtype="int32")
-    inputs_test_x = [test_x1_sent]
-    inputs_test_y = np.asarray(class_labels, dtype="int32")
+    inputs_test_x = [_x1_sent, _x1_e1_posi, _x1_e2_posi, _x1_sent_cahr]
+    inputs_test_y = train_y
 
     loss, acc = nn_model.evaluate(inputs_test_x, inputs_test_y, verbose=1, batch_size=1024)
 
@@ -132,11 +123,9 @@ def infer_e2e_model(nnmodel, modelname, modelfile, resultdir, w2file=''):
     print('P = ', P, 'R = ', R, 'F = ', F)
 
 
-def SelectModel(modelname, node_count, wordvocabsize,
-                tagvocabsize, posivocabsize, charvocabsize,
-                word_W, posi_W, tag_W, char_W,
-                input_sent_lenth,
-                w2v_k, posi2v_k, tag2v_k, c2v_k,
+def SelectModel(modelname, node_count, wordvocabsize, posivocabsize, charvocabsize,
+                word_W, posi_W, char_W,
+                max_c, w2v_k, posi2v_k, c2v_k,
                 batch_size=32):
 
     nn_model = None
@@ -148,30 +137,46 @@ def SelectModel(modelname, node_count, wordvocabsize,
                                            word_W=word_W,
                                            l2_reg=5e-4)
 
+    if modelname is 'Model_LSTM_treeGCN_softmax_1':
+        nn_model = Model_LSTM_treeGCN_softmax_1(node_count=node_count,
+                                                wordvocabsize=wordvocabsize,
+                                                charvocabsize=charvocabsize,
+                                                posivocabsize=posivocabsize,
+                                                w2v_k=w2v_k, c2v_k=c2v_k, posi2v_k=posi2v_k,
+                                                word_W=word_W, char_W=char_W, posi_W=posi_W,
+                                                maxword_length=max_c,
+                                                batch_size=batch_size)
+
     return nn_model
 
 
 def Dynamic_get_trainSet(shuffle=True):
 
     pairs_train, labels_train = ProcessData_gcn_onlySeen.\
-        Create4Classifier_softmax(tagDict_train, shuffle, fltr, class_num=120)
+        Create4Classifier_softmax(tagDict_train, shuffle, class_num=120)
     pairs_dev, labels_dev = ProcessData_gcn_onlySeen.\
-        Create4Classifier_softmax(tagDict_dev, shuffle, fltr, class_num=120)
+        Create4Classifier_softmax(tagDict_dev, shuffle, class_num=120)
     print('Dynamic_get_trainSet train len = ', len(pairs_train[0]), len(labels_train))
     print('Dynamic_get_trainSet dev len = ', len(pairs_dev[0]), len(labels_dev))
 
     train_x1_sent = np.asarray(pairs_train[0], dtype="int32")
+    train_x1_e1_posi = np.asarray(pairs_train[1], dtype="int32")
+    train_x1_e2_posi = np.asarray(pairs_train[2], dtype="int32")
+    train_x1_sent_cahr = np.asarray(pairs_train[3], dtype="int32")
     print(train_x1_sent.shape)
     train_y = np.asarray(labels_train, dtype="int32")
     dev_x1_sent = np.asarray(pairs_dev[0], dtype="int32")
+    dev_x1_e1_posi = np.asarray(pairs_dev[1], dtype="int32")
+    dev_x1_e2_posi = np.asarray(pairs_dev[2], dtype="int32")
+    dev_x1_sent_cahr = np.asarray(pairs_dev[3], dtype="int32")
     dev_y = np.asarray(labels_dev, dtype="int32")
     train_fltr = np.asarray(pairs_train[1], dtype='float32')
     print(train_fltr.shape)
     dev_fltr = np.asarray(pairs_dev[1], dtype='float32')
 
-    inputs_train_x = [train_x1_sent]
+    inputs_train_x = [train_x1_sent, train_x1_e1_posi, train_x1_e2_posi, train_x1_sent_cahr]
     inputs_train_y = [train_y]
-    inputs_dev_x = [dev_x1_sent]
+    inputs_dev_x = [dev_x1_sent, dev_x1_e1_posi, dev_x1_e2_posi, dev_x1_sent_cahr]
     inputs_dev_y = [dev_y]
 
     return inputs_train_x, inputs_train_y, inputs_dev_x, inputs_dev_y
@@ -182,6 +187,7 @@ if __name__ == "__main__":
     maxlen = 100
 
     modelname = 'Model_treeGCN_softmax_1'
+    modelname = 'Model_LSTM_treeGCN_softmax_1'
 
     print(modelname)
 
@@ -195,7 +201,7 @@ if __name__ == "__main__":
 
     resultdir = "./data/result/"
 
-    datafname = 'WikiReading_data_treeGCN.Word.onlySeen'
+    datafname = 'WikiReading_data_treeGCN.WordCharPosi.onlySeen'
 
     datafile = "./model/model_data/" + datafname + ".pkl"
 
@@ -216,9 +222,8 @@ if __name__ == "__main__":
                                           w2v_file, c2v_file, t2v_file, datafile,
                                           w2v_k=100, c2v_k=50, t2v_k=100, maxlen=maxlen)
 
-    for inum in range(2, 3):
+    for inum in range(1, 2):
 
-        graph_dict, \
         tagDict_train, tagDict_dev, tagDict_test, \
         word_vob, word_id2word, word_W, w2v_k, \
         char_vob, char_id2char, char_W, c2v_k, \
@@ -226,19 +231,14 @@ if __name__ == "__main__":
         posi_W, posi_k, type_W, type_k, \
         max_s, max_posi, max_c = pickle.load(open(datafile, 'rb'))
 
-        A = nx.adjacency_matrix(nx.from_dict_of_lists(graph_dict))
-        fltr = GraphConv.preprocess(A).astype('f4')
-        print('fltr.toarray.shape ... ', fltr.toarray().shape)
-
         nn_model = SelectModel(modelname,
-                               node_count=len(graph_dict),
+                               node_count=35+6+35+6+35+6,
                                wordvocabsize=len(word_vob),
-                               tagvocabsize=len(target_vob),
                                posivocabsize=max_posi + 1,
                                charvocabsize=len(char_vob),
-                               word_W=word_W, posi_W=posi_W, tag_W=type_W, char_W=char_W,
-                               input_sent_lenth=max_s,
-                               w2v_k=w2v_k, posi2v_k=max_posi + 1, tag2v_k=type_k, c2v_k=c2v_k,
+                               word_W=word_W, posi_W=posi_W, char_W=char_W,
+                               max_c=max_c,
+                               w2v_k=w2v_k, posi2v_k=max_posi + 1, c2v_k=c2v_k,
                                batch_size=batch_size)
 
         modelfile = "./model/" + modelname + "__" + datafname + "__" + str(inum) + ".h5"
