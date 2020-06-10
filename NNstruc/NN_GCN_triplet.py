@@ -180,7 +180,7 @@ def Model_LSTM_treeGCN_triloss_1(node_count, wordvocabsize, charvocabsize, posiv
     dropout_2 = Dropout(0.5)(graph_conv_2)
 
     flatten = Flatten()(dropout_2)
-    fc = Dense(10, activation='tanh')(flatten)
+    fc = Dense(100, activation='tanh')(flatten)
     # fc = concatenate([fc, BiLSTM_fh, BiLSTM_bh], axis=-1)
     fc = Dropout(0.5)(fc)
 
