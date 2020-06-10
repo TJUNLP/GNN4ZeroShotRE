@@ -232,7 +232,7 @@ if __name__ == "__main__":
         max_s, max_posi, max_c = pickle.load(open(datafile, 'rb'))
 
         nn_model = SelectModel(modelname,
-                               node_count=35+6+35+6+35+6,
+                               node_count=35+6+30+6+35+6,
                                wordvocabsize=len(word_vob),
                                posivocabsize=max_posi + 1,
                                charvocabsize=len(char_vob),

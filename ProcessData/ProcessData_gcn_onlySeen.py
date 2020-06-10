@@ -706,7 +706,7 @@ def get_data(trainfile, testfile, w2v_file, c2v_file, t2v_file, datafile, w2v_k=
 
     max_context_l = 35
     max_e = 6
-    max_context_m = 35
+    max_context_m = 30
     max_context_r = 35
 
     tagDict_1 = get_sentDicts(testfile,

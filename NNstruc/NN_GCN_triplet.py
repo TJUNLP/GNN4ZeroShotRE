@@ -20,7 +20,7 @@ from tensorflow.python.ops.sparse_ops import sparse_tensor_to_dense
 tf.compat.v1.disable_eager_execution()
 
 graph_dict = getGraph4Text.GetGraph(max_context_l=35, max_e_1=6,
-                                    max_context_m=35, max_e_2=6,
+                                    max_context_m=30, max_e_2=6,
                                     max_context_r=35)
 
 fltr = nx.adjacency_matrix(nx.from_dict_of_lists(graph_dict))
@@ -43,7 +43,7 @@ def Model_LSTM_treeGCN_softmax_1(node_count, wordvocabsize, charvocabsize, posiv
                                      trainable=True,
                                      weights=[word_W])
     word_embedding_x = word_embedding_layer(X_word_in)
-    word_embedding_x = Dropout(0.25)(word_embedding_x)
+    word_embedding_x = Dropout(0.5)(word_embedding_x)
 
     char_input_sent_x1 = Input(shape=(node_count-6, maxword_length,), dtype='int32')
     char_embedding_sent_layer = TimeDistributed(
@@ -56,7 +56,7 @@ def Model_LSTM_treeGCN_softmax_1(node_count, wordvocabsize, charvocabsize, posiv
     char_cnn_sent_layer = TimeDistributed(Conv1D(50, 3, activation='relu', padding='valid'))
     char_embedding_sent_x1 = char_cnn_sent_layer(char_embedding_sent_x1)
     char_embedding_sent_x1 = TimeDistributed(GlobalMaxPooling1D())(char_embedding_sent_x1)
-    char_embedding_sent_x1 = Dropout(0.3)(char_embedding_sent_x1)
+    char_embedding_sent_x1 = Dropout(0.5)(char_embedding_sent_x1)
 
     input_e1_posi_x1 = Input(shape=(node_count-6,), dtype='int32')
     input_e2_posi_x1 = Input(shape=(node_count-6,), dtype='int32')
@@ -70,12 +70,13 @@ def Model_LSTM_treeGCN_softmax_1(node_count, wordvocabsize, charvocabsize, posiv
     embedding_e1_posi_x1 = embedding_posi_layer(input_e1_posi_x1)
     embedding_e2_posi_x1 = embedding_posi_layer(input_e2_posi_x1)
 
-    BiLSTM_layer = Bidirectional(LSTM(100, activation='tanh',return_sequences=True), merge_mode='ave')
+    BiLSTM_layer = Bidirectional(LSTM(50, activation='tanh',
+                                      return_sequences=True, return_state=True), merge_mode='concat')
     word_embedding_node0to5 = Lambda(lambda x: x[:, :6])(word_embedding_x)
     word_embedding_sent_x1 = Lambda(lambda x: x[:, 6:])(word_embedding_x)
     embedding_x1 = concatenate([word_embedding_sent_x1, char_embedding_sent_x1,
                                 embedding_e1_posi_x1, embedding_e2_posi_x1], axis=-1)
-    BiLSTM_x1 = BiLSTM_layer(embedding_x1)
+    BiLSTM_x1, lstm_h, lstm_c = BiLSTM_layer(embedding_x1)
     BiLSTM_x1 = Dropout(0.5)(BiLSTM_x1)
     word_embedding_x = Lambda(lambda x: tf.concat([x[0], x[1]], axis=1))([word_embedding_node0to5, BiLSTM_x1])
     graph_conv_1 = GraphConv(200,
@@ -94,13 +95,14 @@ def Model_LSTM_treeGCN_softmax_1(node_count, wordvocabsize, charvocabsize, posiv
     # pool = GlobalAttentionPool(200)(dropout_2)
 
     flatten = Flatten()(dropout_2)
-    fc = Dense(512, activation='relu')(flatten)
+    fc = Dense(150, activation='tanh')(flatten)
+    fc = concatenate([fc, lstm_h], axis=-1)
     fc = Dropout(0.5)(fc)
 
     # LSTM_backward = LSTM(200, activation='tanh', return_sequences=False,
     #                      go_backwards=True, dropout=0.5)(dropout_2)
 
-    # present_node0 = concatenate([feature_node0, LSTM_backward], axis=-1)
+    # present_node0 = concatenate([feature_node0, lstm_h], axis=-1)
     class_output = Dense(120)(fc)
     class_output = Activation('softmax', name='CLASS')(class_output)
 

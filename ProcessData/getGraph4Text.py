@@ -91,6 +91,7 @@ def getLens(files):
 
 def GetGraph(max_context_l=35, max_e_1=6, max_context_m=35, max_e_2=6, max_context_r=35):
     graph_dict = {}
+    max_s = max_context_l + max_e_1 + max_context_m + max_e_2 + max_context_r
     '''
     define:
         node-0: root
@@ -105,39 +106,44 @@ def GetGraph(max_context_l=35, max_e_1=6, max_context_m=35, max_e_2=6, max_conte
         node-82~87: e_2 word
         node-88~122: context_r word
     '''
-    graph_dict[0] = [1, 1, 1, 1, 1, 1] + [0 for i in range(6, 123)]
+    graph_dict[0] = [1, 1, 1, 1, 1, 1] + [0 for i in range(6, max_s+6)]
     # print(len(graph_dict[0]), graph_dict[0])
-    graph_dict[1] = [1, 1, 1, 0, 0, 0] + [1 for i in range(6, 41)] + [0 for i in range(41, 123)]
-    graph_dict[2] = [1, 1, 1, 1, 0, 0] + [0 for i in range(6, 41)] + \
-                    [1 for i in range(41, 47)] + [0 for i in range(47, 123)]
-    graph_dict[3] = [1, 0, 1, 1, 1, 0] + [0 for i in range(6, 47)] + [1 for i in range(47, 82)] + \
-                    [0 for i in range(82, 123)]
-    graph_dict[4] = [1, 0, 0, 1, 1, 1] + [0 for i in range(6, 82)] + [1 for i in range(82, 88)] + \
-                    [0 for i in range(88, 123)]
-    graph_dict[5] = [1, 0, 0, 0, 1, 1] + [0 for i in range(6, 88)] + [1 for i in range(88, 123)]
-    graph_dict[6] = [0, 1, 0, 0, 0, 0] + [1, 1] + [0 for i in range(8, 123)]
+    graph_dict[1] = [1, 1, 1, 0, 0, 0] + [1 for i in range(6, 6+max_context_l)] \
+                    + [0 for i in range(6+max_context_l, max_s+6)]
+    graph_dict[2] = [1, 1, 1, 1, 0, 0] + [0 for i in range(6, 6+max_context_l)] + \
+                    [1 for i in range(6+max_context_l, 6+max_context_l+max_e_1)] + \
+                    [0 for i in range(6+max_context_l+max_e_1, max_s+6)]
+    graph_dict[3] = [1, 0, 1, 1, 1, 0] + [0 for i in range(6, 6+max_context_l+max_e_1)] + \
+                    [1 for i in range(6+max_context_l+max_e_1, 6+max_context_l+max_e_1+max_context_m)] + \
+                    [0 for i in range(6+max_context_l+max_e_1+max_context_m, max_s+6)]
+    graph_dict[4] = [1, 0, 0, 1, 1, 1] + [0 for i in range(6, 6+max_context_l+max_e_1+max_context_m)] + \
+                    [1 for i in range(6+max_context_l+max_e_1+max_context_m, 6+max_context_l+max_e_1+max_context_m+max_e_2)] + \
+                    [0 for i in range(6+max_context_l+max_e_1+max_context_m+max_e_2, max_s+6)]
+    graph_dict[5] = [1, 0, 0, 0, 1, 1] + [0 for i in range(6, 6+max_context_l+max_e_1+max_context_m+max_e_2)] + \
+                    [1 for i in range(6+max_context_l+max_e_1+max_context_m+max_e_2, max_s+6)]
+    graph_dict[6] = [0, 1, 0, 0, 0, 0] + [1, 1] + [0 for i in range(8, max_s+6)]
 
-    for i in range(7, 41):
+    for i in range(7, 6+max_context_l):
         graph_dict[i] = [0, 1, 0, 0, 0, 0] + [0 for j in range(6, i-1)] + \
-                        [1, 1, 1] + [0 for j in range(i+2, 123)]
+                        [1, 1, 1] + [0 for j in range(i+2, max_s+6)]
 
-    for i in range(41, 47):
+    for i in range(6+max_context_l, 6+max_context_l+max_e_1):
         graph_dict[i] = [0, 0, 1, 0, 0, 0] + [0 for j in range(6, i-1)] + \
-                        [1, 1, 1] + [0 for j in range(i+2, 123)]
+                        [1, 1, 1] + [0 for j in range(i+2, max_s+6)]
 
-    for i in range(47, 82):
+    for i in range(6+max_context_l+max_e_1, 6+max_context_l+max_e_1+max_context_m):
         graph_dict[i] = [0, 0, 0, 1, 0, 0] + [0 for j in range(6, i-1)] + \
-                        [1, 1, 1] + [0 for j in range(i + 2, 123)]
+                        [1, 1, 1] + [0 for j in range(i + 2, max_s+6)]
 
-    for i in range(82, 88):
+    for i in range(6+max_context_l+max_e_1+max_context_m, 6+max_context_l+max_e_1+max_context_m+max_e_2):
         graph_dict[i] = [0, 0, 0, 0, 1, 0] + [0 for j in range(6, i-1)] + \
-                        [1, 1, 1] + [0 for j in range(i + 2, 123)]
+                        [1, 1, 1] + [0 for j in range(i + 2, max_s+6)]
 
-    for i in range(88, 122):
+    for i in range(6+max_context_l+max_e_1+max_context_m+max_e_2, max_s-1+6):
         graph_dict[i] = [0, 0, 0, 0, 0, 1] + [0 for j in range(6, i-1)] + \
-                        [1, 1, 1] + [0 for j in range(i + 2, 123)]
+                        [1, 1, 1] + [0 for j in range(i + 2, max_s+6)]
 
-    graph_dict[122] = [0, 0, 0, 0, 0, 1] + [0 for j in range(6, 121)] + [1, 1]
+    graph_dict[max_s-1+6] = [0, 0, 0, 0, 0, 1] + [0 for j in range(6, max_s-2+6)] + [1, 1]
 
     return graph_dict
 
@@ -267,9 +273,12 @@ if __name__ == '__main__':
 
     trainfile = '/Users/shengbinjia/Documents/GitHub/GNN4ZeroShotRE/data/WikiReading/WikiReading_data.random.train.txt'
     testfile = '/Users/shengbinjia/Documents/GitHub/GNN4ZeroShotRE/data/WikiReading/WikiReading_data.random.test.txt'
-    # GetGraph()
 
-    reg = GetGraph_gat(max_s=13, pad_left=2, e1_l=1, e1_r=3, e2_l=5, e2_r=8)
-    for i in reg.keys():
-        print(i)
-        print(reg[i])
+    getLens(files={trainfile, testfile})
+
+    # reg = GetGraph(max_context_l=3, max_e_1=2, max_context_m=2, max_e_2=3, max_context_r=3)
+    #
+    # # reg = GetGraph_gat(max_s=13, pad_left=2, e1_l=1, e1_r=3, e2_l=5, e2_r=8)
+    # for i in reg.keys():
+    #     print(i)
+    #     print(reg[i])
