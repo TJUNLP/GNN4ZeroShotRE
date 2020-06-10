@@ -320,7 +320,7 @@ def infer_e2e_model(nnmodel, modelname, modelfile, resultdir, w2file=''):
 
 def SelectModel(modelname, node_count, wordvocabsize, tagvocabsize, posivocabsize,charvocabsize,
                      word_W, posi_W, tag_W, char_W,
-                     w2v_k, posi2v_k, tag2v_k, c2v_k,
+                     w2v_k, posi2v_k, tag2v_k, c2v_k,maxword_length,
                      batch_size=32):
     nn_model = None
 
@@ -335,7 +335,7 @@ def SelectModel(modelname, node_count, wordvocabsize, tagvocabsize, posivocabsiz
                                                 tagvocabsize=tagvocabsize,
                                                 w2v_k=w2v_k, c2v_k=c2v_k, posi2v_k=posi2v_k, tag2v_k=tag2v_k,
                                                 word_W=word_W, char_W=char_W, posi_W=posi_W,tag_W=tag_W,
-                                                maxword_length=max_c,
+                                                maxword_length=maxword_length,
                                                 batch_size=batch_size,
                                                 margin1=margin1, margin2=margin2, margin3=margin3)
 
@@ -417,7 +417,7 @@ if __name__ == "__main__":
                                posivocabsize=max_posi + 1,
                                charvocabsize=len(char_vob),
                                word_W=word_W, posi_W=posi_W, tag_W=type_W, char_W=char_W,
-                               input_sent_lenth=max_s,
+                               maxword_length=max_c,
                                w2v_k=w2v_k, posi2v_k=max_posi + 1, tag2v_k=type_k, c2v_k=c2v_k,
                                batch_size=batch_size)
 
