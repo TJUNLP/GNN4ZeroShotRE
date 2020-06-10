@@ -1,34 +1,18 @@
 # -*- encoding:utf-8 -*-
 
-import tensorflow as tf
-config = tf.ConfigProto(allow_soft_placement=True)
-#最多占gpu资源的70%
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
-#开始不会给tensorflow全部gpu资源 而是按需增加
-config.gpu_options.allow_growth = True
-sess = tf.Session(config=config)
-
 import pickle, datetime, codecs, math, gc
 import os.path
 import numpy as np
 from ProcessData import ProcessData_gcn
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-
-from NNstruc.NN_GCN import Model_ONBiLSTM_RankMAP_three_triloss_1
-
-import keras
-
-
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from NNstruc.NN_GCN_triplet import Model_LSTM_treeGCN_triloss_1
+import tensorflow as tf
 
 def test_model3(nn_model, tag2sentDict_test):
 
     predict_all = 0
     predict_right_all = 0
     totel_right_all = 0
-
-    tagDict_prototypes = ProcessData_gcn.\
-        get_rel_prototypes(rel_prototypes_file, max_s, max_posi, word_vob, target_vob, char_vob, max_c)
-    assert tagDict_prototypes.keys() == tag2sentDict_test.keys()
 
     for ii, tag in enumerate(tag2sentDict_test.keys()):
         sents = tag2sentDict_test[tag]
@@ -45,7 +29,7 @@ def test_model3(nn_model, tag2sentDict_test):
             totel_right += 1
             totel_right_all += 1
 
-            for si, ty in enumerate(tagDict_prototypes.keys()):
+            for si, ty in enumerate(tag2sentDict_test.keys()):
 
                 data_s, data_e1_posi, data_e2_posi, char_s = sents[s]
                 data_s_all_0.append(data_s)
@@ -69,7 +53,7 @@ def test_model3(nn_model, tag2sentDict_test):
         inputs_train_x = [train_x1_sent, train_x1_e1_posi, train_x1_e2_posi, train_x1_sent_cahr,
                           train_tag, train_tag, train_tag, train_tag]
 
-        intermediate_layer_model = keras.models.Model(inputs=nn_model.input,
+        intermediate_layer_model = tf.keras.models.Model(inputs=nn_model.input,
                                                       outputs=nn_model.get_layer('right_cos').output)
         # intermediate_layer_model = keras.models.Model(inputs=nn_model.input,
         #                                               outputs=nn_model.get_layer('right_cos').get_output_at(0))
@@ -296,8 +280,8 @@ def train_e2e_model(nn_model, modelfile, inputs_train_x, inputs_train_y,
         nowepoch += increment
         earlystop += 1
 
-        inputs_train_x, inputs_train_y = Dynamic_get_trainSet(istest=False)
-        inputs_dev_x, inputs_dev_y = Dynamic_get_trainSet(istest=True)
+        inputs_train_x, inputs_train_y = Dynamic_get_trainSet(isdev=False)
+        inputs_dev_x, inputs_dev_y = Dynamic_get_trainSet(isdev=True)
 
         nn_model.fit(inputs_train_x, inputs_train_y,
                                batch_size=batch_size,
@@ -334,51 +318,36 @@ def infer_e2e_model(nnmodel, modelname, modelfile, resultdir, w2file=''):
     print('P = ', P, 'R = ', R, 'F = ', F)
 
 
-def SelectModel(modelname, wordvocabsize, tagvocabsize, posivocabsize,charvocabsize,
+def SelectModel(modelname, node_count, wordvocabsize, tagvocabsize, posivocabsize,charvocabsize,
                      word_W, posi_W, tag_W, char_W,
-                     input_sent_lenth,
                      w2v_k, posi2v_k, tag2v_k, c2v_k,
                      batch_size=32):
     nn_model = None
 
-    if modelname is 'Model_ONBiLSTM_RankMAP_three_triloss_0080101_426':
+    if modelname is 'Model_LSTM_treeGCN_triloss_1':
         margin1 = 0.08
         margin2 = 0.1
         margin3 = 0.1
-        nn_model = Model_LSTM_treeGCN_softmax_1(node_count,
+        nn_model = Model_LSTM_treeGCN_triloss_1(node_count=node_count,
                                                 wordvocabsize=wordvocabsize,
                                                 charvocabsize=charvocabsize,
                                                 posivocabsize=posivocabsize,
-                                     w2v_k, c2v_k, posi2v_k,
-                                     word_W, char_W, posi_W, maxword_length,
-                                     l2_reg=5e-4, batch_size=32)
-
-        nn_model = Model_ONBiLSTM_RankMAP_three_triloss_1(wordvocabsize=wordvocabsize,
-                                                  posivocabsize=posivocabsize,
-                                                  charvocabsize=charvocabsize,
-                                                    tagvocabsize=tagvocabsize,
-                                                  word_W=word_W, posi_W=posi_W, char_W=char_W, tag_W=tag_W,
-                                                  input_sent_lenth=input_sent_lenth,
-                                                  input_maxword_length=max_c,
-                                                  w2v_k=w2v_k, posi2v_k=posi2v_k, c2v_k=c2v_k, tag2v_k=tag2v_k,
-                                                  batch_size=batch_size,
-                                                  margin1=margin1, margin2=margin2, margin3=margin3)
+                                                tagvocabsize=tagvocabsize,
+                                                w2v_k=w2v_k, c2v_k=c2v_k, posi2v_k=posi2v_k, tag2v_k=tag2v_k,
+                                                word_W=word_W, char_W=char_W, posi_W=posi_W,tag_W=tag_W,
+                                                maxword_length=max_c,
+                                                batch_size=batch_size,
+                                                margin1=margin1, margin2=margin2, margin3=margin3)
 
     return nn_model
 
 
 def Dynamic_get_trainSet(isdev):
 
-    if isdev == True:
-        tagDict = tagDict_dev
-    else:
-        tagDict = tagDict_train
-
     pairs_train = ProcessData_gcn.\
-        CreateTriplet_RankClassify421(tagDict_train, tagDict_dev, tagDict_test, type_W, istest=istest)
+        CreateTriplet_RankClassify421(tagDict_train, tagDict_dev, tagDict_test, type_W, isdev=isdev)
 
     print('CreatePairs train len = ', len(pairs_train[0]))
-
 
     train_x1_sent = np.asarray(pairs_train[0], dtype="int32")
     train_x1_e1_posi = np.asarray(pairs_train[1], dtype="int32")
@@ -404,7 +373,7 @@ if __name__ == "__main__":
 
     maxlen = 100
 
-    modelname = 'Model_ONBiLSTM_RankMAP_three_triloss_0080101_426'
+    modelname = 'Model_LSTM_treeGCN_triloss_1'
 
     print(modelname)
 
@@ -421,7 +390,6 @@ if __name__ == "__main__":
     datafile = "./model/model_data/" + datafname + ".pkl"
 
     batch_size = 512 # 512
-
     Test = True
 
     if not os.path.exists(datafile):
@@ -443,6 +411,7 @@ if __name__ == "__main__":
         relRankDict = ProcessData_gcn.get_rel_sim_rank(type_W)
 
         nn_model = SelectModel(modelname,
+                               node_count=6+35+6+30+6+35,
                                wordvocabsize=len(word_vob),
                                tagvocabsize=len(target_vob),
                                posivocabsize=max_posi + 1,

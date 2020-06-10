@@ -1734,7 +1734,7 @@ def CreateTriplet_RankClassify42(tagDict_train, tagDict_dev, tagDict_test, type_
     return pairs
 
 
-def CreateTriplet_RankClassify421(tagDict_train, tagDict_dev, tagDict_test, type_W, istest=False):
+def CreateTriplet_RankClassify421(tagDict_train, tagDict_dev, tagDict_test, type_W, isdev=False):
     # version 1
 
     RankDict = {}
@@ -1785,7 +1785,7 @@ def CreateTriplet_RankClassify421(tagDict_train, tagDict_dev, tagDict_test, type
 
     labels = []
 
-    if istest == False:
+    if isdev == False:
 
         for tag in tagDict_train.keys():
             sents = tagDict_train[tag]
@@ -2660,7 +2660,7 @@ def get_data(trainfile, testfile, w2v_file, t2v_file, datafile, w2v_k=300, c2v_k
 
     max_context_l = 35
     max_e = 6
-    max_context_m = 35
+    max_context_m = 30
     max_context_r = 35
 
     tagDict_test, _ = get_sentDicts(testfile,
