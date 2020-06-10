@@ -76,7 +76,7 @@ def Model_LSTM_treeGCN_softmax_1(node_count, wordvocabsize, charvocabsize, posiv
     word_embedding_sent_x1 = Lambda(lambda x: x[:, 6:])(word_embedding_x)
     embedding_x1 = concatenate([word_embedding_sent_x1, char_embedding_sent_x1,
                                 embedding_e1_posi_x1, embedding_e2_posi_x1], axis=-1)
-    BiLSTM_x1 = BiLSTM_layer(embedding_x1)
+    BiLSTM_x1, BiLSTM_fh, BiLSTM_bh, _f, _b = BiLSTM_layer(embedding_x1)
     BiLSTM_x1 = Dropout(0.5)(BiLSTM_x1)
     word_embedding_x = Lambda(lambda x: tf.concat([x[0], x[1]], axis=1))([word_embedding_node0to5, BiLSTM_x1])
     graph_conv_1 = GraphConv(200,
@@ -96,7 +96,7 @@ def Model_LSTM_treeGCN_softmax_1(node_count, wordvocabsize, charvocabsize, posiv
 
     flatten = Flatten()(dropout_2)
     fc = Dense(150, activation='tanh')(flatten)
-    fc = concatenate([fc, lstm_memory_state], axis=-1)
+    fc = concatenate([fc, BiLSTM_fh, BiLSTM_bh], axis=-1)
     fc = Dropout(0.5)(fc)
 
     # LSTM_backward = LSTM(200, activation='tanh', return_sequences=False,
