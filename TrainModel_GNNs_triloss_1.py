@@ -25,7 +25,7 @@ def test_model3(nn_model, tag2sentDict_test):
         data_tag_all = []
         totel_right = 0
 
-        for s in range(1, len(sents)//2):
+        for s in range(1, len(sents)//5):
             totel_right += 1
             totel_right_all += 1
 

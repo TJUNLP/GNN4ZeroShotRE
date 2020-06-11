@@ -215,14 +215,12 @@ def Model_LSTM_treeGCN_triloss_1(node_count, wordvocabsize, charvocabsize, posiv
         (tag_embedding_n, tag_embedding_p)
 
     if isequal_p_n is True and isequal_a_n0 is False:
-        loss = Lambda(lambda x: tf.keras.backend.relu(0. + x[0] - x[1]) +
+        loss = Lambda(lambda x: tf.keras.backend.relu(margin2 + x[2] - x[3]) +
                                 tf.keras.backend.relu(margin2 + x[2] - x[3]) +
-                                tf.keras.backend.relu(0. + x[1] - x[3]))\
+                                tf.keras.backend.relu(margin2 + x[2] - x[3]))\
             ([wrong_cos, right_cos, anchor_wrong_cos, anchor_cos])
     elif isequal_a_n0 is True and isequal_p_n is False:
-        loss = Lambda(lambda x: tf.keras.backend.relu(margin1 + x[0] - x[1]) +
-                                tf.keras.backend.relu(0. + x[2] - x[3]) +
-                                tf.keras.backend.relu(0. + x[1] - x[3]))\
+        loss = Lambda(lambda x: tf.keras.backend.relu(margin1 + x[0] - x[1]))\
             ([wrong_cos, right_cos, anchor_wrong_cos, anchor_cos])
     else:
         loss = Lambda(lambda x: tf.keras.backend.relu(margin1 + x[0] - x[1]) +
