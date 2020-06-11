@@ -58,7 +58,7 @@ def test_model3(nn_model, tag2sentDict_test):
         # intermediate_layer_model = keras.models.Model(inputs=nn_model.input,
         #                                               outputs=nn_model.get_layer('right_cos').get_output_at(0))
 
-        predictions = intermediate_layer_model.predict(inputs_train_x, verbose=1, batch_size=batch_size)
+        predictions = intermediate_layer_model.predict(inputs_train_x, verbose=0, batch_size=batch_size)
 
         width = len(tag2sentDict_test.keys())
         assert len(predictions) // width == totel_right
@@ -345,7 +345,7 @@ def SelectModel(modelname, node_count, wordvocabsize, tagvocabsize, posivocabsiz
 def Dynamic_get_trainSet(isdev):
 
     pairs_train = ProcessData_gcn.\
-        CreateTriplet_RankClassify421(tagDict_train, tagDict_dev, tagDict_test, type_W, isdev=isdev)
+        CreateTriplet_RankClassify621(tagDict_train, tagDict_dev, tagDict_test, type_W, isdev=isdev)
 
     print('CreatePairs train len = ', len(pairs_train[0]))
 

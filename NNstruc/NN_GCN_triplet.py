@@ -164,7 +164,7 @@ def Model_LSTM_treeGCN_triloss_1(node_count, wordvocabsize, charvocabsize, posiv
     word_embedding_sent_x1 = Lambda(lambda x: x[:, 6:])(word_embedding_x)
     embedding_x1 = concatenate([word_embedding_sent_x1, char_embedding_sent_x1,
                                 embedding_e1_posi_x1, embedding_e2_posi_x1], axis=-1)
-    BiLSTM_x1, BiLSTM_fh, BiLSTM_bh, _f, _b = BiLSTM_layer(embedding_x1)
+    BiLSTM_x1 = BiLSTM_layer(embedding_x1)
     BiLSTM_x1 = Dropout(0.5)(BiLSTM_x1)
     word_embedding_x = Lambda(lambda x: tf.concat([x[0], x[1]], axis=1))([word_embedding_node0to5, BiLSTM_x1])
     graph_conv_1 = GraphConv(200,
@@ -180,7 +180,6 @@ def Model_LSTM_treeGCN_triloss_1(node_count, wordvocabsize, charvocabsize, posiv
 
     flatten = Flatten()(dropout_2)
     fc = Dense(100, activation='tanh')(flatten)
-    # fc = concatenate([fc, BiLSTM_fh, BiLSTM_bh], axis=-1)
     fc = Dropout(0.5)(fc)
 
     input_tag_p = Input(shape=(1,), dtype='int32')
@@ -215,12 +214,12 @@ def Model_LSTM_treeGCN_triloss_1(node_count, wordvocabsize, charvocabsize, posiv
     isequal_p_n = Lambda(lambda x: tf.keras.backend.equal(x[0], x[1]))\
         (tag_embedding_n, tag_embedding_p)
 
-    if isequal_p_n is True:
+    if isequal_p_n is True and isequal_a_n0 is False:
         loss = Lambda(lambda x: tf.keras.backend.relu(0. + x[0] - x[1]) +
                                 tf.keras.backend.relu(margin2 + x[2] - x[3]) +
                                 tf.keras.backend.relu(0. + x[1] - x[3]))\
             ([wrong_cos, right_cos, anchor_wrong_cos, anchor_cos])
-    elif isequal_a_n0 is True:
+    elif isequal_a_n0 is True and isequal_p_n is False:
         loss = Lambda(lambda x: tf.keras.backend.relu(margin1 + x[0] - x[1]) +
                                 tf.keras.backend.relu(0. + x[2] - x[3]) +
                                 tf.keras.backend.relu(0. + x[1] - x[3]))\
