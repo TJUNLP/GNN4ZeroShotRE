@@ -210,10 +210,27 @@ def Model_LSTM_treeGCN_triloss_1(node_count, wordvocabsize, charvocabsize, posiv
     anchor_cos = Dot(axes=-1, normalize=True, name='anchor_cos')([fc, tag_embedding_a])
     anchor_wrong_cos = Dot(axes=-1, normalize=True, name='anchor_wrong_cos')([fc, tag_embedding_n0])
 
-    loss = Lambda(lambda x: tf.keras.backend.relu(margin1 + x[0] - x[1]) +
-                            tf.keras.backend.relu(margin2 + x[2] - x[3]) +
-                            tf.keras.backend.relu(margin3 + x[1] - x[3]))\
-        ([wrong_cos, right_cos, anchor_wrong_cos, anchor_cos])
+    isequal_a_n0 = Lambda(lambda x: tf.keras.backend.equal(x[0], x[1]))\
+        (tag_embedding_a, tag_embedding_n0)
+    isequal_p_n = Lambda(lambda x: tf.keras.backend.equal(x[0], x[1]))\
+        (tag_embedding_n, tag_embedding_p)
+
+    if isequal_p_n is True:
+        loss = Lambda(lambda x: tf.keras.backend.relu(0. + x[0] - x[1]) +
+                                tf.keras.backend.relu(margin2 + x[2] - x[3]) +
+                                tf.keras.backend.relu(0. + x[1] - x[3]))\
+            ([wrong_cos, right_cos, anchor_wrong_cos, anchor_cos])
+    elif isequal_a_n0 is True:
+        loss = Lambda(lambda x: tf.keras.backend.relu(margin1 + x[0] - x[1]) +
+                                tf.keras.backend.relu(0. + x[2] - x[3]) +
+                                tf.keras.backend.relu(0. + x[1] - x[3]))\
+            ([wrong_cos, right_cos, anchor_wrong_cos, anchor_cos])
+    else:
+        loss = Lambda(lambda x: tf.keras.backend.relu(margin1 + x[0] - x[1]) +
+                                tf.keras.backend.relu(margin2 + x[2] - x[3]) +
+                                tf.keras.backend.relu(margin3 + x[1] - x[3]))\
+            ([wrong_cos, right_cos, anchor_wrong_cos, anchor_cos])
+
     mymodel = Model([X_word_in, input_e1_posi_x1, input_e2_posi_x1, char_input_sent_x1,
                      input_tag_p, input_tag_n, input_tag_a, input_tag_n0, fltr_in], loss)
 
