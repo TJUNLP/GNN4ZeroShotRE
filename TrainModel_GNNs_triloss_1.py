@@ -344,8 +344,11 @@ def SelectModel(modelname, node_count, wordvocabsize, tagvocabsize, posivocabsiz
 
 def Dynamic_get_trainSet(isdev):
 
+    # pairs_train = ProcessData_gcn.\
+    #     CreateTriplet_RankClassify621(tagDict_train, tagDict_dev, tagDict_test, type_W, isdev=isdev)
+    #
     pairs_train = ProcessData_gcn.\
-        CreateTriplet_RankClassify621(tagDict_train, tagDict_dev, tagDict_test, type_W, isdev=isdev)
+        CreateTriplet_RankClassify421(tagDict_train, tagDict_dev, tagDict_test, type_W, isdev=isdev)
 
     print('CreatePairs train len = ', len(pairs_train[0]))
 

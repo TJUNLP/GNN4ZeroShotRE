@@ -1737,12 +1737,13 @@ def CreateTriplet_RankClassify42(tagDict_train, tagDict_dev, tagDict_test, type_
 def CreateTriplet_RankClassify421(tagDict_train, tagDict_dev, tagDict_test, type_W, isdev=False):
     # version 1
 
+    testlist = list(tagDict_dev.keys()) + list(tagDict_test.keys())
+    assert len(testlist) == (24 + 9)
+
     RankDict = {}
     for ii, i in enumerate(tagDict_train.keys()):
 
         i_j = {}
-        testlist = list(tagDict_dev.keys()) + list(tagDict_test.keys())
-        assert len(testlist) == (24 + 9)
 
         for ji, j in enumerate(testlist):
             # if i == j:
@@ -1850,7 +1851,7 @@ def CreateTriplet_RankClassify421(tagDict_train, tagDict_dev, tagDict_test, type
 
                 data_tag_all_p.append([tag])
 
-                keylist = list(relRankDict.keys())
+                keylist = testlist
 
                 ran1 = random.randrange(0, len(keylist))
                 if keylist[ran1] == tag:
