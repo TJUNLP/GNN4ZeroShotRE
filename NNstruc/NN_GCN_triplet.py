@@ -158,7 +158,9 @@ def Model_LSTM_treeGCN_triloss_1(node_count, wordvocabsize, charvocabsize, posiv
     embedding_e1_posi_x1 = embedding_posi_layer(input_e1_posi_x1)
     embedding_e2_posi_x1 = embedding_posi_layer(input_e2_posi_x1)
 
-    BiLSTM_layer = LSTM(100, activation='tanh', return_sequences=True)
+    BiLSTM_layer = Bidirectional(LSTM(50, activation='tanh',
+                                      return_sequences=True), merge_mode='concat')
+    # BiLSTM_layer = LSTM(100, activation='tanh', return_sequences=True)
     word_embedding_node0to5 = Lambda(lambda x: x[:, :6])(word_embedding_x)
     word_embedding_sent_x1 = Lambda(lambda x: x[:, 6:])(word_embedding_x)
     embedding_x1 = concatenate([word_embedding_sent_x1, char_embedding_sent_x1,

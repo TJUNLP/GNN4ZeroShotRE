@@ -402,7 +402,7 @@ if __name__ == "__main__":
                                  w2v_file, t2v_file, datafile,
                                  w2v_k=100, c2v_k=50, t2v_k=100, maxlen=maxlen)
 
-    for inum in range(0, 3):
+    for inum in range(6, 9):
 
         tagDict_train, tagDict_dev, tagDict_test, \
         word_vob, word_id2word, word_W, w2v_k, \
